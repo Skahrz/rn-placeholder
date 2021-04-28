@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Animated, LayoutChangeEvent, StyleSheet, View } from "react-native";
 
 const START_VALUE = 0;
 const END_VALUE = 100;
@@ -18,36 +18,31 @@ export const ShineOverlay: React.FC<ShineOverlayProps> = ({
   children,
   reverse,
 }) => {
-  const animation = useRef(new Animated.Value(START_VALUE));
+  const [width, setWidth] = useState(0);
+  const animation = useMemo(() => new Animated.Value(START_VALUE), []);
 
-  const start = () => {
-    animation.current.setValue(START_VALUE);
-
-    Animated.timing(animation.current, {
+  useEffect(() => {
+    Animated.loop(Animated.timing(animation, {
       duration: duration || 750,
       isInteraction,
       toValue: END_VALUE,
-      useNativeDriver: false,
-    }).start((e) => {
-      if (e.finished) {
-        start();
-      }
-    });
-  };
-
-  useEffect(() => {
-    start();
+      useNativeDriver: true,
+    })).start();
   }, []);
 
-  const left = animation.current.interpolate({
+  const onLayout = useCallback(({ nativeEvent: { layout } }: LayoutChangeEvent) => {
+    setWidth(layout.width);
+  }, []);
+
+  const translateX = animation.interpolate({
     inputRange: [START_VALUE, END_VALUE],
-    outputRange: reverse ? ["100%", "0%"] : ["0%", "100%"],
+    outputRange: reverse ? [width, 0] : [0, width],
   });
 
   return (
-    <View>
+    <View onLayout={onLayout}>
       {children}
-      <Animated.View style={[styles.shine, { left }]} />
+      <Animated.View style={[styles.shine, { transform: [{ translateX }] }]} />
     </View>
   );
 };
